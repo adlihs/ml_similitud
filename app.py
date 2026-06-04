@@ -71,7 +71,6 @@ with st.sidebar:
     top_n = st.slider("Similar players", min_value=3, max_value=30, value=10)
     same_position_only = st.checkbox("Same position only", value=True)
     same_league_only = st.checkbox("Same league only", value=False)
-    max_age_gap = st.slider("Max age gap", min_value=0, max_value=20, value=20)
     min_similarity = st.slider("Minimum similarity %", min_value=0, max_value=100, value=0)
 
 try:
@@ -84,6 +83,16 @@ if "position" not in model.data.columns:
     st.error("The saved model does not include a position column. Rebuild similar_players.joblib from the new CSV.")
     st.stop()
 
+age_min = int(model.data["age"].min())
+age_max = int(model.data["age"].max())
+with st.sidebar:
+    age_range = st.slider(
+        "Age range",
+        min_value=age_min,
+        max_value=age_max,
+        value=(age_min, age_max),
+    )
+
 players = model.data.sort_values(["league_folder", "team_name", "position", "player_name"]).reset_index(drop=True)
 
 selector_cols = st.columns([2, 2, 1, 1])
@@ -95,11 +104,15 @@ team_options = sorted(league_players["team_name"].unique().tolist())
 selected_team = selector_cols[1].selectbox("2. Choose team", team_options)
 
 team_players = league_players[league_players["team_name"] == selected_team]
-position_options = sorted(team_players["position"].unique().tolist())
+position_options = ["ALL"] + sorted(team_players["position"].unique().tolist())
 selected_position = selector_cols[2].selectbox("3. Choose position", position_options)
 name_query = selector_cols[3].text_input("Search player")
 
-position_players = team_players[team_players["position"] == selected_position]
+position_players = (
+    team_players
+    if selected_position == "ALL"
+    else team_players[team_players["position"] == selected_position]
+)
 filtered_players = position_players.copy()
 if name_query:
     filtered_players = filtered_players[
@@ -129,8 +142,7 @@ except Exception as exc:
     st.stop()
 
 results = raw_results.copy()
-if max_age_gap < 20:
-    results = results[(results["age"] - int(selected_player["age"])).abs() <= max_age_gap]
+results = results[(results["age"] >= age_range[0]) & (results["age"] <= age_range[1])]
 if min_similarity > 0:
     results = results[results["similarity"] >= min_similarity / 100]
 results = results.head(top_n)
