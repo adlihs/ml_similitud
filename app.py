@@ -64,7 +64,7 @@ def render_player_card(player: pd.Series) -> None:
 
 
 st.title("Similar Soccer Players")
-st.caption("Scikit-learn nearest-neighbor model using per-90 stats, success rates, age, and rating.")
+st.caption("")
 
 with st.sidebar:
     st.header("Results")
